@@ -1,0 +1,5 @@
+.selected_post
+__pycache__/
+*.pyc
+.env
+.venv/

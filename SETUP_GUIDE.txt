@@ -1,0 +1,133 @@
+朋域科技｜PENGYU DIGITAL｜IG 自動宣傳系統（初版）
+====================================================
+
+【這個版本已完成什麼】
+✓ 朋域科技專用內容管理台（不用安裝 Python 就能先看畫面）
+✓ 1 支已製作的 30 秒「專業客戶報告系統」Reels 影片
+✓ 24 張有繁體中文文案的企業宣傳圖（圖像為示意設計）
+✓ 共 25 則已排入、可編輯、可暫停的 IG 內容
+✓ 週一、三、五台灣時間早上 09:00 自動選下一篇發布；8 週以上素材量
+✓ GitHub Actions 雲端排程，電腦關機後仍可運作
+✓ Meta 官方 Instagram API 發文（自己帳號、非爬蟲模擬滑鼠）
+✓ 重複發文保護；失敗後先停止並標示 needs_review，不盲目重送
+✓ 預覽測試功能；預設禁止正式發布
+
+【尚未完成／不能保證的事】
+× 沒有代替你在 IG／Meta／GitHub 完成連線授權，所以下載後不會自動發文
+× 不會自動刷觀看、刷讚、追蹤陌生人、群發陌生人私訊；這些不是合法的有機宣傳方式
+× 不會自動購買廣告；付費曝光需要另走 Meta Ads Manager 並設定預算
+× 本版內容庫 25 則，發完即停止，不會無限製造沒有審核的內容
+× Instagram access token 有有效期限（一般約 60 天），需定期更新，否則發文會暫停
+× 本版宣傳圖片為依已知功能設計的示意素材，不是已完成系統的真實畫面
+× 不保證增加多少追蹤或客戶，需搭配內容與成效分析
+
+----------------------------------------------------
+步驟 1｜先在電腦本機看管理台
+----------------------------------------------------
+1. 解壓縮整個 ZIP。
+2. 在電腦中雙擊「開啟_IG宣傳管理台.html」。
+3. 會看到 25 則已準備好的圖片／Reels／文案。
+4. 可以切換文案編輯、勾選取消「核准」以暫停某篇。
+5. 修改後按「下載更新後 queue.json」；把 queue.json 替換回專案根目錄。
+   若已上傳 GitHub，也要把更新後的 queue.json 上傳回儲存庫。
+
+----------------------------------------------------
+步驟 2｜將 IG 切換「專業帳號」
+----------------------------------------------------
+IG App → 個人檔案 → 設定與動態 → 帳號類型和工具 → 切換為專業帳號。
+選「商業帳號」或「創作者帳號」均可；企業品牌建議商業帳號。
+這個版本使用官方「Instagram API with Instagram Login」，不強制綁 Facebook 粉絲專頁。
+
+----------------------------------------------------
+步驟 3｜在 Meta 開發者平台取得「自己帳號」的授權
+----------------------------------------------------
+網站：https://developers.facebook.com/apps/
+1. 以你持有／管理的 Meta 帳號登入並建立 App。
+2. 選 Instagram 相關情境或建立 Business 類型 App，找到
+   Instagram → API setup with Instagram business login。
+3. 授權你剛建立的 PENGYU DIGITAL 專業 IG 帳號。
+4. 設定所需權限（至少）：
+   instagram_business_basic
+   instagram_business_content_publish
+5. 對自己的帳號使用 Meta 的 Generate token 流程（需要時完成測試者邀請）。
+6. 記下 Meta 提供的數字「IG User ID」與「IG Access Token」。
+   千萬不要把 token 貼在 ChatGPT、分享給陌生人、放在公開 repo 或 queue.json。
+   自己的管理帳號通常可用 Standard Access；替其他客戶帳號發文時可能須 App Review。
+
+注意：Instagram 登入授權流程、畫面文字隨 Meta 更新會變。
+      取得權限不是「IG 密碼」；不要把 IG 密碼交給這個程式。
+
+----------------------------------------------------
+步驟 4｜在 GitHub 建立一個新的「公開」儲存庫
+----------------------------------------------------
+網站：https://github.com/new
+推薦 repository name：pengyu-ig-auto
+1. 建立 Public Repo（只放要公開的宣傳圖與程式，勿放憑證）。
+2. 把壓縮包解壓縮後的所有檔案與資料夾上傳至 repo「根目錄」，
+   尤其需保留 .github/workflows/instagram-auto.yml。
+3. GitHub Repo → Settings → Pages → Build and deployment
+   Source: Deploy from a branch
+   Branch: main 或目前預設分支
+   Folder: /docs
+   Save。
+4. 等待 GitHub Pages 顯示綠燈與公開網站網址。網址通常為：
+   https://<你的GitHub帳號>.github.io/pengyu-ig-auto/
+5. 用「無痕模式」開啟以下媒體網址，看是否能直接觀看：
+   https://<你的GitHub帳號>.github.io/pengyu-ig-auto/media/post_01.jpg
+   https://<你的GitHub帳號>.github.io/pengyu-ig-auto/media/brand_intro_30s.mp4
+   必須是直接的 JPG / MP4 內容，不是登入或檔案預覽頁。
+
+----------------------------------------------------
+步驟 5｜設定 GitHub Secrets／Variables（一次設定）
+----------------------------------------------------
+GitHub Repo → Settings → Secrets and variables → Actions
+
+在「Secrets」建立以下兩個私密欄位：
+  IG_ACCESS_TOKEN  = Meta 提供的 Instagram User access token
+  IG_USER_ID       = Meta 提供的 IG 數字帳號 ID（如 1784...）
+
+在「Variables」建立以下開關：
+  ENABLE_AUTO_PUBLISH = false    （先保持 false，測試通過後再改 true）
+
+如果 GitHub Pages 使用了自訂網域，需另外建立 Variable：
+  MEDIA_BASE_URL = https://你的公開網域/media
+否則可不填，程式會自動使用 repo 對應的 github.io 網址。
+
+----------------------------------------------------
+步驟 6｜先試跑，不要馬上發出去
+----------------------------------------------------
+GitHub Repo → Actions → PENGYU DIGITAL - IG Auto Publish → Run workflow
+保留「dry_run」打勾；按執行。
+到執行紀錄看它預覽「下一篇」，這時不會連線發文。
+
+若你確認圖片、文案、帳號授權與 GitHub Pages 都正確：
+把 Variable：ENABLE_AUTO_PUBLISH 改成 true。
+之後預定每週一、三、五早上 09:00（Asia/Taipei）自動發布。
+GitHub Actions 的排程不是精確即時，忙碌時可能延遲幾分鐘。
+
+如果你要立刻試第一篇：
+Actions → Run workflow → 將 dry_run 取消勾選、force 勾選，執行。
+這會「真的發文」！請先檢查內容與設定。
+
+----------------------------------------------------
+步驟 7｜查看結果與避免重複
+----------------------------------------------------
+- 正常發布後：state.json 會有 status = published、Meta media_id。
+- 若 API 出錯或網路中斷：state.json 會記 needs_review。
+- 若出現 reserved：可能中途停止。不要直接刪紀錄；
+  先到 IG 實際檔案確認已否發文，否則可能重複。
+- 若刪除 state.json 或其中 entries，會有重複發文風險。
+- 若要停止全部發布：立刻把 ENABLE_AUTO_PUBLISH 改為 false。
+- 帳號 token 過期：更新同名 IG_ACCESS_TOKEN Secret。
+- 如資源已用完：新增經審核圖片到 docs/media，並加入 queue.json。
+- 若需要自動生成下一批文案、影片、成效報告，那是下一階段功能，不能在目前版本聲稱已自動完成。
+
+----------------------------------------------------
+IG 官方文件（請以最新 Meta 說明為準）
+----------------------------------------------------
+https://developers.facebook.com/docs/instagram-platform/instagram-api-with-instagram-login/content-publishing
+https://developers.facebook.com/apps/
+https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax
+
+朋域科技 · PENGYU DIGITAL
+把複雜留給系統，把簡單留給人。

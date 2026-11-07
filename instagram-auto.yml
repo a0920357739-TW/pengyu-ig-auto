@@ -1,0 +1,81 @@
+name: PENGYU DIGITAL - IG Auto Publish
+on:
+  schedule:
+    - cron: '0 9 * * 1,3,5'
+      timezone: 'Asia/Taipei'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: '預覽測試（勾選就不發布）'
+        required: true
+        type: boolean
+        default: true
+      force:
+        description: '手動正式發布時忽略週一三五限制（僅非預覽模式）'
+        required: false
+        type: boolean
+        default: false
+permissions:
+  contents: write
+concurrency:
+  group: pengyu-ig-publish
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 14
+    env:
+      IG_ACCESS_TOKEN: ${{ secrets.IG_ACCESS_TOKEN }}
+      IG_USER_ID: ${{ secrets.IG_USER_ID }}
+      AUTO_PUBLISH_ENABLED: ${{ vars.ENABLE_AUTO_PUBLISH }}
+      MEDIA_BASE_URL: ${{ vars.MEDIA_BASE_URL }}
+      META_API_VERSION: v26.0
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - name: Set Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Preview
+        run: python publisher.py --phase preview
+      - name: Reserve post (does NOT publish yet)
+        if: ${{ github.event_name == 'schedule' || inputs.dry_run == false }}
+        run: |
+          if [ "${{ inputs.force }}" = "true" ]; then
+            python publisher.py --phase reserve --force
+          else
+            python publisher.py --phase reserve
+          fi
+      - name: Commit reserved state FIRST (anti-duplicate)
+        if: ${{ github.event_name == 'schedule' || inputs.dry_run == false }}
+        run: |
+          git config user.name "Pengyu IG Automator"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add state.json
+          if ! git diff --cached --quiet; then
+            git commit -m "ig: reserve scheduled post"
+            git push
+          fi
+      - name: Publish via Instagram official API
+        if: ${{ github.event_name == 'schedule' || inputs.dry_run == false }}
+        id: publish_step
+        continue-on-error: true
+        run: python publisher.py --phase publish
+      - name: Persist Meta post ID or needs_review status
+        if: ${{ always() && (github.event_name == 'schedule' || inputs.dry_run == false) }}
+        run: |
+          git config user.name "Pengyu IG Automator"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add state.json
+          if ! git diff --cached --quiet; then
+            git commit -m "ig: record publishing result"
+            git push
+          fi
+      - name: Report failure
+        if: ${{ steps.publish_step.outcome == 'failure' }}
+        run: |
+          echo "Publishing needs manual review. Check Instagram first, then state.json. Do not blindly retry."
+          exit 1
